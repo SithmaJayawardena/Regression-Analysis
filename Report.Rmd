@@ -1,0 +1,218 @@
+---
+title: "Regression Analysis of Relative CPU Performance Data"
+output: html_notebook
+---
+
+The CPU is the work engine of a system and it keeps everything running. All the different
+calculations required for gathering and delivering data, maintaining the system, and ordering
+access are performed by the CPU. It has different characteristics like frequency, cache size,
+memory bandwidth, and core count. Better configurations usually cost more. Consumers
+should be able to estimate whether investing in a costly configuration helps to meet their
+particular goals. Hence, performance analysis is really important at present.
+
+#### The questions explored in this notebook are as follows:
+
+1. Does any pair of variables correlated?
+2. Can the use of transformations on the response and predictor variables improve the regression models?
+3. Can weighted least square method improve the model?
+4. Can variable selection methods improve the model?
+5. Is the improved model effective?
+
+
+#### The goals of this study:
+
+1. Regression analysis to create a mathematical model that can be used to predict the valuesof estimated relative performance.
+2. Use Box-Cox method and square root transformations.
+3. Apply Weighted Least Square method.
+4. Apply variable selection methods. Specifically, forward and backward methods.
+5. Use 5-fold cross validation to measure the model effectiveness.
+5. Use R libraries such as alr4, caret and MASS.
+
+
+#### Data description:
+
+The data set used in the analysis of this project comes from the UCI Machine Learning repository. It has no missing values. This data set contains data about 202 machines with the total of
+10 attributes. It includes brand, model and 6 key test metrics, as well as BYTE magazine’s
+Published Relative Performance benchmark, and the Estimated Relative Performance made
+by Tel Aviv university. They are named as follows for interpretation:
+
+1. MYCT : Machine cycle time in nanoseconds (integer)
+2. MMIN : Minimum main memory in kilobytes (integer)
+3. MMAX : Maximum main memory in kilobytes (integer)
+4. CACH : Cache memory in kilobytes (integer)
+5. CHMIN : Minimum channels in units (integer)
+6. CHMAX : Maximum channels in units (integer)
+7. PRP : Published relative performance (integer)
+8. ERP : Estimated relative performance from the original article (integer). This will be the
+predicted attribute in this project
+
+#### Importing libraries and the data set
+
+```{r}
+suppressPackageStartupMessages({
+library(alr4)
+library(caret)
+library(MASS)
+})
+data = read.table("machine.data", sep=",")
+colnames(data) = c('vendor name', 'Model Name', 'MYCT', 'MMIN', 'MMAX', 'CACH', 'CHMIN', 'CHMAX', 'PRP', 'ERP')
+data$`vendor name` = factor(data$`vendor name`, levels=c('adviser','amdahl','apollo','basf','bti','burroughs','c.r.d','cdc','cambex','dec',                                  'dg','formation','four-phase','gould','hp','harris','honeywell','ibm','ipl','magnuson'                                       ,'nas','ncr','nixdorf','perkin-elmer','prime','siemens','sperry','sratus','wang'),                      labels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29))
+
+```
+
+### Question 1: Does any pair of variables correlated?
+
+The scatterplot matrix for ERP and the six key test metrics factored according to the
+vendor name by color is as follows. It can be seen that there is no clear clustering of the observations by vendor name which is a categorical variable. The plot reveals that there are no notable correlations among the variables. Therefore, multiple linear regression models are explored without considering interaction among predictor variables.
+
+```{r}
+plot(~MYCT+MMIN+MMAX+CACH+CHMIN+CHMAX+ERP,
+     data=data,col = data$`vendor name`, pch = 16, main='Scatterplot matrix factored on vendor name')
+```
+
+### Question 2: Can the use of transformations on the response and predictor variables improve the regression models?
+
+
+At first, the initial model is fitted. Based upon results, BoxCox transformation and square
+root transformation are applied to the response and the predictor variables in-order to improve
+the statistical results and assumption validation. Furthermore, a model is built using weights
+for weighted least squares to enhance the validity of the model. The next step is to determine
+the variables that best describes the model. Forward and backward variable selection strategies
+are employed to identify the best model and found more evidence for the best model by using
+5-fold cross validation technique.
+
+For the creation of a model that can be used to predict the values of estimated relative perfor-
+mance of CPU, the first model to be considered is that includes all 6 key test metrics of the
+machines, namely ’Model1’. The results reveal that all the predictors are significant except for CHMIN at 0.05 significant level. Moreover, Model1 gives a residual standard error of 46.88 and an adjusted R-squared of 0.9082
+which are pretty good values. Examining the diagnostic plots, however suggests that this
+model is invalid.
+
+```{r}
+#null model
+Model1 = lm(ERP~MYCT+MMIN+MMAX+CACH+CHMIN+CHMAX,data=data)
+summary(Model1)
+plot(Model1)
+```
+
+'Residual vs fitted' plot shows a clustering of points to the left of the plot and clearly the LOWESS is
+not flat indicating non-linearity. Q-Q normal plot shows a break of normality at the
+edges. There is a drop at the left corner of Scale location plot showing non-constant variance. There
+seems to be three influential points as per 'Residuals vs leverage' plot. These plots suggest that a transformation might be needed on the variables in order to stabilize the assumptions.
+
+#### The Box-Cox Method
+
+The Box-Cox method is used to find the optimal transformation for ERP which is the
+response variable. the following plot shows that the optimal transformation has λ ≈ 0.5. This suggests
+a square root transformation on ERP which is denoted as ERP1 for interpretation.
+
+```{r}
+#BoxCox transformation
+boxCox(Model1)
+```
+
+Based on the model 'Model2' after transformation on the response variable,  all the variables are significant at 0.05 significant level except for MYCT. The residual standard error has a huge drop to 0.3313 and adjusted R-squared has improved to 0.9958. This transformation caused noticeable improvements in residual diagnostic plots.
+
+```{r}
+data$ERP1 = data$ERP^0.5
+Model2 = lm(ERP1~MYCT+MMIN+MMAX+CACH+CHMIN+CHMAX,data=data)
+summary(Model2)
+plot(Model2)
+```
+
+A major improvement can be seen in residual vs fitted plot addressing non-linearity. Once again, a break of normality is shown mostly to the right of Q-Q plot. Also,
+Scale location plot reveals a trend as a result of non-constant variance, although this violation has been
+addressed by Box-Cox transformation to some extent. When looking at 'Residuals vs leverage' plot, some influential point can be seen. As a result, once again this model is invalid to obtain better predictions of
+estimated relative performance.
+
+#### Square root transformation
+
+In order to address these violations, transformations on predictor variables might be helpful.
+Therefore, square root transformation is applied to the six predictors. The transformed variables are named as MYCT1, MMIN1 ,MMAX1, CACH1, CHMIN1 and CHMAX1. Moreover,
+various combinations of original variables and transformed variables are taken into consideration until the assumption violations has been minimized.
+
+```{r}
+#square root transformation
+for (col in c('MYCT','MMIN','MMAX','CACH','CHMIN','CHMAX')) {
+  data = cbind(data, data[,col]^0.5)
+  }
+colnames(data) = c('vendor name', 'Model Name', 'MYCT', 'MMIN', 'MMAX', 'CACH', 'CHMIN', 'CHMAX', 'PRP', 'ERP','ERP1','MYCT1','MMIN1','MMAX1','CACH1','CHMIN1','CHMAX1')
+```
+
+After the comparison of the residual diagnostic plots, residual standard error and adjusted
+R-squared of many models, the model with ERP1, MYCT, MMIN, MMAX, CACH1, CHMIN and
+CHMAX showed an outstanding improvement. For interpretation it is called 'Model7'.
+
+```{r}
+Model7 = lm(ERP1~MYCT+MMIN+MMAX+CACH1+CHMIN+CHMAX,data=data)
+summary(Model7)
+plot(Model7)
+```
+
+It is clear that all predictors are significant at 0.05 significant which is different from the summary of Model1 and Model2. This gives a residual standard error of 0.5546 which is much lower than that of Model1 but  higher than that of Model2. Adjusted R-squared is 0.9883, which is a pretty good result. In addition, 'Residual vs fitted' plot shows a notable improvement of linearity than that of Model 2. Q-Q plot reveals a stabilization of deviation of the end points compared to the Q-Q plot of Model2. It is very clear that this
+model successfully addresses the non-constant variance according to the huge improvement shown from Scale location plot . In contrast to the previous two models, Model7 gives only one influential
+point as in residuals vs leverage.
+
+### Question 3: Can weighted least square method improve the model?
+
+Using weights for weighted least squares (WLS) might stabilize the variance further. But, after fitting Model10 with WLS estimated from Model7, the weighted values vs fitted values plot and the normal Q-Q plot did not show any outstanding improvement to address non-constant variance. Additionally, Model 10 with WLS gives a higher Residual standard error of 0.9749 compared to that of Model7 and adjusted R-squared of 0.9851. In order to improve the weights, several models are fitted by estimating weights for WLS few more times. The results of these models reveals that there are no further improvements on addressing the non-constant variance.
+Therefore, considering the mentioned comparisons, Model7 can be stated as a better model to attain the goal of this project.
+
+```{r}
+res = Model7$residuals
+z = log(res^2)
+z.lo = loess(z~data$ERP1,degree = 2,span=.75)
+loz = predict(z.lo)
+sig2hat = exp(loz)
+sighat = sqrt(sig2hat)
+Model10 = lm(ERP1~MYCT+MMIN+MMAX+CACH1+CHMIN+CHMAX,data=data,weights = 1/sighat)
+summary(Model10)
+plot(Model10$fitted.values,weighted.residuals(Model10))
+lines(lowess(Model10$fitted.values,weighted.residuals(Model10)),col=2)
+qqnorm(weighted.residuals(Model10))
+qqline(weighted.residuals(Model10))
+```
+
+### Question 4: Can variable selection methods improve the model?
+
+With the goal of promoting improvement of this model, variable selection strategies ware employed. Both forward and backward selection methods choose the same variables for the best model as in Model7, with AIC values -3.73 and -239.56 respectively. By looking at the respective coefficients for the two methods, we can see that even though the variables being the same in both cases, coefficients are not equal for each variable.
+Moreover, the coefficients from backward variable selection method looks approximately equal to that of Model7. Unsurprisingly, from the summary of Model7, it can be seen that the six variables of Model7 are significant at 0.05 level which does not allow dropping of variables. Therefore, Model7 can be concluded as the best model from variable selection strategies.
+
+```{r}
+high = Model7
+low = lm(ERP1 ~ 1, data = data,weights = 1/sighat)
+stepAIC(low,direction="forward",scope=list(upper=high,lower=low))
+```
+```{r}
+stepAIC(high,direction="backward",scope=list(upper=high,lower=low))
+```
+
+
+### Question 5: Is the improved model effective?
+
+In addition, the effectiveness of Model 7 was examined by using 5-fold cross validation.
+Root mean squared error (RMSE), mean absolute error (MAE), RMSE standard deviation
+and MAE standard deviation are 0.6112937, 0.3886229, 0.1477895, 0.04904513 respectively.
+These values reveal that Model7 is a better fit to predict relative CPU performance.
+
+```{r}
+train1.control = trainControl(method="cv",number=5)
+FinalModel = train(ERP1~MYCT+MMIN+MMAX+CACH1+CHMIN+CHMAX,weights = 1/sighat, data = data, method = "lm",
+                    trControl = train1.control)
+FinalModel$results
+```
+
+### Summary 
+
+According to the statistical analysis that has been done in this project, Model7 is the best model
+to predict relative CPU performance. It includes the variables MYCT, MMIN, MMAX, CACH1, CHMIN and CHMAX. In this model, there are several transformations that has been done to response variable as well as the predictor variables in-order to address assumption violations. Moreover, incorporating weighted least squares is not effective to address non-constant variance further. Model7 describes approximately 99% of the variance of this data set and gives residual standard error of 0.5546 It is interesting to note that all the predictors have positive coefficients revealing that all the predictors are positively correlated with the relative CPU performance which is actually sensible. The coefficient for the intercept being 2.949 means that, when all other key test metrics remain zero, the mean estimated relative performance equals 2.949 This might be
+due to other secondary factors in a processor. Upon comparing the coefficients of six key test
+metrics increasing the cache memory has a higher impact on the CPU performance. On the
+other hand, expanding machine cycle time and main memory by a small amount does not
+have a major impact on the CPU performance as those variables have a very low coefficients
+compared to others. Adding channels has an average impact on relative CPU performance
+when considering their coefficients.
+
+
+
+
+
