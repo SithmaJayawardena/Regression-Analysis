@@ -17,3 +17,4 @@ The goals of this study:
 5. Use 5-fold cross validation to measure the model effectiveness.
 6. Use R libraries such as alr4, caret and MASS.
 
+![My Image](reg.jpg.webp)
