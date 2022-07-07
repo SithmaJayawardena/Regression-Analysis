@@ -1,4 +1,4 @@
-# Regression-Analysis
+# Regression Analysis of Relative CPU Performance Data
 The CPU is the work engine of a system and it keeps everything running. All the different calculations required for gathering and delivering data, maintaining the system, and ordering access are performed by the CPU. It has different characteristics like frequency, cache size, memory bandwidth, and core count. Better configurations usually cost more. Consumers should be able to estimate whether investing in a costly configuration helps to meet their particular goals. Hence, performance analysis is really important at present.
 
 The questions explored in this notebook are as follows:
